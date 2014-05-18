@@ -8,78 +8,141 @@ var todos = [
 ];
 
 var Todo = React.createClass({
-  getInitialState: function() {
-    return {remainTime: this.props.duration, paused: true, ended: false};
-  },
-  resetTimer: function() {
-    this.setState({remainTime: this.props.duration});
-  },
-  pause: function(){
-    if(this.interval){
-      clearInterval(this.interval);
-      this.interval = null;
-      this.setState({paused: true});
-    }
-  },
   finish: function(){
-    clearInterval(this.interval);
-    setTimeout(this.resetTimer, 200);
-    this.setState({paused: true});
-  },
-  playPause: function() {
-    var _this = this;
-    this.props.pauseTodos();
-    if(!this.state.paused) {
-      this.pause();
-    } else {
-      this.interval = setInterval(function(){
-        var remainTime = _this.state.remainTime;
-        _this.setState({remainTime: remainTime - 1});
-        if(_this.state.remainTime === 0) {
-          _this.finish();
-        }
-      }, 1000);
-    }
-    this.setState({paused: !this.state.paused});
+
   },
   render: function() {
-    var timeStampToString = function(stamp) {
+    function make2Digits(val){
+      val = val.toString();
+      return (val.length <= 1? '0': '') + val;
+    }
+
+    function timeStampToString(stamp) {
       var hours = Math.floor(stamp / 3600);
       var minutes = Math.floor(stamp % 3600 / 60);
-      var secounds = stamp % 60;
+      var secounds = (stamp % 60).toString();
+      hours = make2Digits(hours);
+      minutes = make2Digits(minutes);
+      secounds = make2Digits(secounds);
       return hours + ":" + minutes + ":" + secounds;
     };
 
-    var buttonText = this.state.paused ? 'Play': 'Pause';
+    var buttonText = this.props.todo.paused ? 'Play': 'Pause';
     var className = "button-";
-    className += this.state.paused ? 'play': 'pause'
+    className += this.props.todo.paused ? 'play': 'pause';
+
+    var remainingTime = timeStampToString(this.props.todo.remainingTime);
     return(
       <div className="todo">
-        <h2>{this.props.name}</h2>
-        <p>{timeStampToString(this.state.remainTime)}</p>
-        <button className={className} ref="playPause" onClick={this.playPause}>{buttonText}</button>
-        <button className='button-delete' onClick={this.props.deleteTodo}>X</button>
+        <h2>{this.props.todo.name}</h2>
+        <p>{remainingTime}</p>
+        <button
+          className={className}
+          ref="playPause"
+          onClick={this.props.playPauseTodo}>
+            {buttonText}
+        </button>
+        <button className='button-delete'
+          onClick={this.props.deleteTodo}>
+          X
+        </button>
       </div>
     );
   }
 });
 
 var TodoList = React.createClass({
-  pauseTodos: function(){
+  getInitialState: function(){
+    var todos = this.props.todos || [];
+    todos = todos.map(function(todo, i){
+      todo.remainingTime = todo.duration;
+      todo.paused = true;
+    });
+    return {todos: this.props.todos};
+  },
+  createTodo: function(todo) {
+    var todos = this.state.todos;
+    todos.push(todo);
+    this.setState({todos: todos});
+  },
+  removeTodo: function(todoIndex) {
+    var todos = this.state.todos;
+    todos.splice(todoIndex, 1);
+    this.setState({todos: todos});
+  },
+  moveTodo: function(todoIndex, to){
+    var todosState = this.state.todos;
+    var todo = todos.splice(todoIndex, 1)[0];
+    if(to === 'top'){
+      todos.unshift(todo);
+    }else if(to === 'bottom'){
+      todos.push(todo);
+    }
+    this.setState({todos: todosState});
+  },
+  pauseAllTodos: function(){
     for(var i=0;i < this.props.todos.length; i++) {
-      this.refs['todo'+i].pause();
+      this.pauseTodo(i);
+    }
+  },
+  pauseTodo: function(todoIndex){
+    var todosState = this.state.todos;
+    if(todosState[todoIndex].paused) return;
+    var todo = this.refs['todo'+todoIndex];
+
+    clearInterval(todo.interval);
+    todo.interval = null;
+    todosState[todoIndex].paused = true;
+    this.setState({todos: todosState});
+  },
+  finish: function(todoIndex){
+    var todosState = this.state.todos;
+    var todo = this.refs['todo'+todoIndex];
+    this.pauseTodo(todoIndex);
+    todosState[todoIndex].remainingTime = todosState[todoIndex].duration;
+    clearInterval(todo.interval);
+    this.setState({todos: todosState});
+    this.moveTodo(todoIndex, 'bottom');
+  },
+  tick: function(todoIndex){
+    var todosState = this.state.todos;
+    var remainingTime = todosState[todoIndex].remainingTime;
+    todosState[todoIndex].remainingTime = remainingTime - 1;
+    this.setState({todosState: todosState});
+    if(remainingTime - 1 === 0) {
+      this.finish(todoIndex);
+    }
+  },
+  resumeTodo: function(todoIndex){
+    var todosState = this.state.todos;
+    if(!todosState[todoIndex].paused) return;
+    var todo = this.refs['todo'+todoIndex];
+
+    this.pauseAllTodos();
+    todo.interval = setInterval(this.tick.bind(this, todoIndex), 1000);
+    todosState[todoIndex].paused = false;
+    this.setState({todos: todosState});
+  },
+  playPauseTodo: function(todoIndex){
+    var todosState = this.state.todos;
+    if(todosState[todoIndex].paused){
+      this.resumeTodo(todoIndex);
+    }else{
+      this.pauseTodo(todoIndex);
     }
   },
   render: function() {
     var _this = this;
-    this.todos = this.props.todos.map(function(item, i){
+    this.todos = this.state.todos.map(function(todo, i){
       return(
         <Todo
           ref={'todo'+i}
-          name={item.name}
-          deleteTodo={_this.props.removeTodo.bind(_this, i)}
-          pauseTodos={_this.pauseTodos}
-          duration={item.duration}/>
+          todo={todo}
+          deleteTodo={_this.removeTodo.bind(null, i)}
+          moveTo={_this.moveTodo.bind(null, i)}
+          pauseAllTodos={_this.pauseAllTodos}
+          playPauseTodo={_this.playPauseTodo.bind(null, i)}
+          duration={todo.duration}/>
       );
     });
 
@@ -109,7 +172,7 @@ var TodoForm = React.createClass({
       donetext: "Pronto",
       default: "0:50",
       align: 'left',
-      placement: 'top'
+      placement: 'bottom'
     });
   },
   render: function() {
@@ -124,24 +187,16 @@ var TodoForm = React.createClass({
 });
 
 var TodoBox = React.createClass({
-  getInitialState: function(){
-    return {todos: todos};
-  },
-  createTodo: function(todo) {
-    var todos = this.state.todos;
-    todos.push(todo);
-    this.setState({todos: todos});
-  },
-  removeTodo: function(todoIndex) {
-    var todos = this.state.todos;
-    todos.splice(todoIndex, 1);
-    this.setState({todos: todos});
+  createTodo: function(todo){
+    this.refs.todoList.createTodo(todo);
   },
   render: function() {
     return(
       <div className="todoBox">
         <h1>TODOs</h1><hr/>
-        <TodoList todos={this.state.todos} removeTodo={this.removeTodo}/>
+        <TodoList
+          ref="todoList"
+          todos={this.props.todos}/>
         <TodoForm createTodo={this.createTodo}/>
       </div>
     );
