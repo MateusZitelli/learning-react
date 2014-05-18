@@ -1,2 +1,2 @@
 #React.js - Learning
-> Some code that I used to learn react.js
+> Some code that I writed while learning react.js

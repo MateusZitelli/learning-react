@@ -21,7 +21,12 @@ var Todo = React.createClass({
       this.setState({paused: true});
     }
   },
-  onClick: function() {
+  finish: function(){
+    clearInterval(this.interval);
+    setTimeout(this.resetTimer, 200);
+    this.setState({paused: true});
+  },
+  playPause: function() {
     var _this = this;
     this.props.pauseTodos();
     if(!this.state.paused) {
@@ -31,15 +36,12 @@ var Todo = React.createClass({
         var remainTime = _this.state.remainTime;
         _this.setState({remainTime: remainTime - 1});
         if(_this.state.remainTime === 0) {
-          clearInterval(_this.interval);
-          setTimeout(_this.resetTimer, 1000);
-          _this.setState({paused: true});
+          _this.finish();
         }
       }, 1000);
     }
     this.setState({paused: !this.state.paused});
   },
-
   render: function() {
     var timeStampToString = function(stamp) {
       var hours = Math.floor(stamp / 3600);
@@ -49,12 +51,14 @@ var Todo = React.createClass({
     };
 
     var buttonText = this.state.paused ? 'Play': 'Pause';
-
+    var className = "button-";
+    className += this.state.paused ? 'play': 'pause'
     return(
       <div className="todo">
         <h2>{this.props.name}</h2>
         <p>{timeStampToString(this.state.remainTime)}</p>
-        <button ref="playPause" onClick={this.onClick}>{buttonText}</button>
+        <button className={className} ref="playPause" onClick={this.playPause}>{buttonText}</button>
+        <button className='button-delete' onClick={this.props.deleteTodo}>X</button>
       </div>
     );
   }
@@ -70,7 +74,12 @@ var TodoList = React.createClass({
     var _this = this;
     this.todos = this.props.todos.map(function(item, i){
       return(
-        <Todo ref={'todo'+i} name={item.name} pauseTodos={_this.pauseTodos} duration={item.duration}/>
+        <Todo
+          ref={'todo'+i}
+          name={item.name}
+          deleteTodo={_this.props.removeTodo.bind(_this, i)}
+          pauseTodos={_this.pauseTodos}
+          duration={item.duration}/>
       );
     });
 
@@ -98,7 +107,9 @@ var TodoForm = React.createClass({
   componentDidMount: function(){
     $(this.refs.timepicker.getDOMNode()).clockpicker({
       donetext: "Pronto",
-      default: "0:50"
+      default: "0:50",
+      align: 'left',
+      placement: 'top'
     });
   },
   render: function() {
@@ -106,7 +117,7 @@ var TodoForm = React.createClass({
       <form className="todoForm" onSubmit={this.onSubmit}>
         <input type="text" ref="name" placeholder="Atividade"></input>
         <input type="text" ref="timepicker" placeholder="Duração"></input>
-        <input value="Criar" type="submit"></input>
+        <input className="button" value="Criar" type="submit"></input>
       </form>
     );
   }
@@ -116,16 +127,21 @@ var TodoBox = React.createClass({
   getInitialState: function(){
     return {todos: todos};
   },
-  createTodo: function(todo){
+  createTodo: function(todo) {
     var todos = this.state.todos;
     todos.push(todo);
     this.setState({todos: todos});
   },
+  removeTodo: function(todoIndex) {
+    var todos = this.state.todos;
+    todos.splice(todoIndex, 1);
+    this.setState({todos: todos});
+  },
   render: function() {
     return(
-      <div className="todoList">
-        <h1>Meus TODOs</h1>
-        <TodoList todos={this.state.todos}/>
+      <div className="todoBox">
+        <h1>TODOs</h1><hr/>
+        <TodoList todos={this.state.todos} removeTodo={this.removeTodo}/>
         <TodoForm createTodo={this.createTodo}/>
       </div>
     );
