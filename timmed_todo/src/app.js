@@ -7,10 +7,13 @@ var todos = [
   {name: "Fazer funfar", duration:90}
 ];
 
-var Todo = React.createClass({
-  finish: function(){
+function playSound(filename){
+  document
+    .getElementById("sound")
+    .innerHTML='<audio autoplay="autoplay"><source src="' + filename + '.mp3" type="audio/mpeg" /><source src="' + filename + '.ogg" type="audio/ogg" /><embed hidden="true" autostart="true" loop="false" src="' + filename +'.mp3" /></audio>';
+}
 
-  },
+var Todo = React.createClass({
   render: function() {
     function make2Digits(val){
       val = val.toString();
@@ -27,17 +30,18 @@ var Todo = React.createClass({
       return hours + ":" + minutes + ":" + secounds;
     };
 
-    var buttonText = this.props.todo.paused ? 'Play': 'Pause';
-    var className = "button-";
-    className += this.props.todo.paused ? 'play': 'pause';
-
+    var todoClassName = 'todo ' + (this.props.todo.ended ? 'ended' : '')
+    var buttonClassName = "button-" + (this.props.todo.paused ? 'play': 'pause');
     var remainingTime = timeStampToString(this.props.todo.remainingTime);
+    var buttonText = this.props.todo.paused ? 'Play': 'Pause';
+    buttonText = this.props.todo.ended ? 'Parar Alarme' : buttonText;
+
     return(
-      <div className="todo">
+      <div className={todoClassName}>
         <h2>{this.props.todo.name}</h2>
         <p>{remainingTime}</p>
         <button
-          className={className}
+          className={buttonClassName}
           ref="playPause"
           onClick={this.props.playPauseTodo}>
             {buttonText}
@@ -57,6 +61,7 @@ var TodoList = React.createClass({
     todos = todos.map(function(todo, i){
       todo.remainingTime = todo.duration;
       todo.paused = true;
+      todo.ended = false;
     });
     return {todos: this.props.todos};
   },
@@ -100,9 +105,10 @@ var TodoList = React.createClass({
     var todo = this.refs['todo'+todoIndex];
     this.pauseTodo(todoIndex);
     todosState[todoIndex].remainingTime = todosState[todoIndex].duration;
+    todosState[todoIndex].ended = true;
     clearInterval(todo.interval);
+    todo.alarm = setInterval(playSound.bind(this, 'assets/notification'), 1000);
     this.setState({todos: todosState});
-    this.moveTodo(todoIndex, 'bottom');
   },
   tick: function(todoIndex){
     var todosState = this.state.todos;
@@ -125,7 +131,13 @@ var TodoList = React.createClass({
   },
   playPauseTodo: function(todoIndex){
     var todosState = this.state.todos;
-    if(todosState[todoIndex].paused){
+    if(todosState[todoIndex].ended){
+      var todo = this.refs['todo'+todoIndex];
+      todosState[todoIndex].ended = false;
+      this.setState({todo: todosState});
+      clearInterval(todo.alarm);
+      this.moveTodo(todoIndex, 'bottom');
+    }else if(todosState[todoIndex].paused){
       this.resumeTodo(todoIndex);
     }else{
       this.pauseTodo(todoIndex);
@@ -137,6 +149,7 @@ var TodoList = React.createClass({
       return(
         <Todo
           ref={'todo'+i}
+          key={'todo'+i}
           todo={todo}
           deleteTodo={_this.removeTodo.bind(null, i)}
           moveTo={_this.moveTodo.bind(null, i)}
@@ -162,7 +175,13 @@ var TodoForm = React.createClass({
     var hours = parseInt(timeInput[0]);
     var minutes = parseInt(timeInput[1]);
     var timeInSecounds = hours * 3600 + minutes * 60;
-    var newTodo = {name: name, duration: timeInSecounds};
+    var newTodo = {
+      name: name,
+      remainingTime: timeInSecounds,
+      duration: timeInSecounds,
+      paused:true,
+      ended:false
+    };
     this.refs.name.getDOMNode().value = '';
     this.refs.timepicker.getDOMNode().value = '';
     this.props.createTodo(newTodo);

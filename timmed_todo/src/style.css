@@ -15,6 +15,7 @@ body{
   margin-left:-250px;
   left: 50%;
   background-color: #3d3d3d;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
 input{
@@ -55,4 +56,13 @@ button:hover{
 
 .button-delete{
   background-color: #eb5858;
+}
+
+.todo.ended{
+  border: 2px solid #eb5858;
+  padding: 2px;
+}
+
+.todo.ended > button.button-play{
+  background-color: #59b7ed;
 }
