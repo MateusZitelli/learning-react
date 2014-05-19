@@ -9,13 +9,11 @@ body{
   font-size: 20px;
 }
 
-.todoBox{
-  position:absolute;
-  width:500px;
-  margin-left:-250px;
-  left: 50%;
-  background-color: #3d3d3d;
-  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+h1{
+  color:#8fe78c;
+}
+
+hr{
 }
 
 input{
@@ -61,6 +59,15 @@ button:hover{
 .todo.ended{
   border: 2px solid #eb5858;
   padding: 2px;
+}
+
+.todoBox{
+  position:absolute;
+  width:500px;
+  margin-left:-250px;
+  left: 50%;
+  background-color: #3d3d3d;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
 }
 
 .todo.ended > button.button-play{

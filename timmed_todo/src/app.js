@@ -3,8 +3,8 @@
 */
 
 var todos = [
-  {name: "Programar", duration:5},
-  {name: "Fazer funfar", duration:90}
+  // {name: "Programar", duration:5},
+  // {name: "Fazer funfar", duration:90}
 ];
 
 function playSound(filename){
@@ -72,6 +72,13 @@ var TodoList = React.createClass({
   },
   removeTodo: function(todoIndex) {
     var todos = this.state.todos;
+    var todo = this.refs['todo'+todoIndex];
+    if(todo.interval){
+      clearInterval(todo.interval);
+    }
+    if(todo.alarm){
+      clearInterval(todo.alarm);
+    }
     todos.splice(todoIndex, 1);
     this.setState({todos: todos});
   },
